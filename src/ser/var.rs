@@ -1,21 +1,21 @@
 use std::io::Write;
 
-use serde::ser::{self, Serialize};
+use serde::ser::{self, Serialize, SerializeStruct, SerializeStructVariant};
 
 use ser::Serializer;
 use error::{Error, Result};
 
 /// An implementation of `SerializeMap` for serializing to XML.
 pub struct Map<'w, W>
-where
-    W: 'w + Write,
+    where
+        W: 'w + Write,
 {
     parent: &'w mut Serializer<W>,
 }
 
 impl<'w, W> Map<'w, W>
-where
-    W: 'w + Write,
+    where
+        W: 'w + Write,
 {
     pub fn new(parent: &'w mut Serializer<W>) -> Map<'w, W> {
         Map { parent }
@@ -23,8 +23,8 @@ where
 }
 
 impl<'w, W> ser::SerializeMap for Map<'w, W>
-where
-    W: 'w + Write,
+    where
+        W: 'w + Write,
 {
     type Ok = ();
     type Error = Error;
@@ -63,25 +63,25 @@ where
 
 /// An implementation of `SerializeStruct` for serializing to XML.
 pub struct Struct<'w, W>
-where
-    W: 'w + Write,
+    where
+        W: 'w + Write,
 {
     parent: &'w mut Serializer<W>,
     name: &'w str,
 }
 
 impl<'w, W> Struct<'w, W>
-where
-    W: 'w + Write,
+    where
+        W: 'w + Write,
 {
     pub fn new(parent: &'w mut Serializer<W>, name: &'w str) -> Struct<'w, W> {
         Struct { parent, name }
     }
 }
 
-impl<'w, W> ser::SerializeStruct for Struct<'w, W>
-where
-    W: 'w + Write,
+impl<'w, W> SerializeStruct for Struct<'w, W>
+    where
+        W: 'w + Write,
 {
     type Ok = ();
     type Error = Error;
@@ -99,5 +99,26 @@ where
 
     fn end(self) -> Result<Self::Ok> {
         write!(self.parent.writer, "</{}>", self.name).map_err(|e| e.into())
+    }
+}
+
+
+impl<'w, W> SerializeStructVariant for Struct<'w, W>
+    where
+        W: 'w + Write,
+{
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_field<T: ?Sized + Serialize>(
+        &mut self,
+        key: &'static str,
+        value: &T,
+    ) -> Result<()> {
+        <Self as SerializeStruct>::serialize_field(self, key, value)
+    }
+
+    fn end(self) -> Result<Self::Ok> {
+        <Self as SerializeStruct>::end(self)
     }
 }
